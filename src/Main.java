@@ -1,63 +1,71 @@
+import java.io.*;
 import java.util.*;
 
-abstract class Room {
-    String type;
-    int beds;
-    double price;
+class Reservation implements Serializable {
+    String guestName;
+    String roomType;
+    String roomId;
 
-    Room(String type, int beds, double price) {
-        this.type = type;
-        this.beds = beds;
-        this.price = price;
-    }
-
-    void display() {
-        System.out.println("Room Type: " + type);
-        System.out.println("Beds: " + beds);
-        System.out.println("Price: " + price);
+    Reservation(String guestName, String roomType, String roomId) {
+        this.guestName = guestName;
+        this.roomType = roomType;
+        this.roomId = roomId;
     }
 }
 
-class SingleRoom extends Room {
-    SingleRoom() {
-        super("Single Room", 1, 1000);
-    }
-}
-
-class DoubleRoom extends Room {
-    DoubleRoom() {
-        super("Double Room", 2, 2000);
-    }
-}
-
-class SuiteRoom extends Room {
-    SuiteRoom() {
-        super("Suite Room", 3, 5000);
-    }
-}
-
-class RoomInventory {
-
-    private HashMap<String, Integer> inventory;
+class RoomInventory implements Serializable {
+    Map<String, Integer> inventory = new HashMap<>();
 
     RoomInventory() {
-        inventory = new HashMap<>();
-        inventory.put("Single Room", 5);
-        inventory.put("Double Room", 3);
-        inventory.put("Suite Room", 2);
+        inventory.put("Single Room", 2);
+        inventory.put("Double Room", 1);
+    }
+}
+
+class BookingHistory implements Serializable {
+    List<Reservation> history = new ArrayList<>();
+
+    void add(Reservation r) {
+        history.add(r);
+    }
+}
+
+class SystemState implements Serializable {
+    RoomInventory inventory;
+    BookingHistory history;
+
+    SystemState(RoomInventory inventory, BookingHistory history) {
+        this.inventory = inventory;
+        this.history = history;
+    }
+}
+
+class PersistenceService {
+
+    private static final String FILE_NAME = "system.dat";
+
+    static void save(SystemState state) {
+        try (ObjectOutputStream oos =
+                     new ObjectOutputStream(new FileOutputStream(FILE_NAME))) {
+
+            oos.writeObject(state);
+            System.out.println("State saved successfully.");
+
+        } catch (Exception e) {
+            System.out.println("Error saving state: " + e.getMessage());
+        }
     }
 
-    int getAvailability(String roomType) {
-        return inventory.getOrDefault(roomType, 0);
-    }
+    static SystemState load() {
+        try (ObjectInputStream ois =
+                     new ObjectInputStream(new FileInputStream(FILE_NAME))) {
 
-    void updateAvailability(String roomType, int count) {
-        inventory.put(roomType, count);
-    }
+            System.out.println("State loaded successfully.");
+            return (SystemState) ois.readObject();
 
-    void displayInventory() {
-        for (String key : inventory.keySet()) {
-            System.out.println(key + " Available: " + inventory.get(key));
+        } catch (Exception e) {
+            System.out.println("No previous state found. Starting fresh.");
+            return new SystemState(new RoomInventory(), new BookingHistory());
         }
     }
 }
@@ -66,25 +74,16 @@ public class Main {
 
     public static void main(String[] args) {
 
-        Room r1 = new SingleRoom();
-        Room r2 = new DoubleRoom();
-        Room r3 = new SuiteRoom();
+        SystemState state = PersistenceService.load();
 
-        RoomInventory inventory = new RoomInventory();
+        state.history.add(new Reservation("Lakshmi", "Single Room", "S-1"));
+        state.inventory.inventory.put("Single Room",
+                state.inventory.inventory.get("Single Room") - 1);
 
-        r1.display();
-        System.out.println("Available: " + inventory.getAvailability(r1.type));
-        System.out.println();
+        PersistenceService.save(state);
 
-        r2.display();
-        System.out.println("Available: " + inventory.getAvailability(r2.type));
-        System.out.println();
-
-        r3.display();
-        System.out.println("Available: " + inventory.getAvailability(r3.type));
-        System.out.println();
-
-        System.out.println("Full Inventory:");
-        inventory.displayInventory();
+        System.out.println("Current Bookings: " + state.history.history.size());
+        System.out.println("Single Room Available: " +
+                state.inventory.inventory.get("Single Room"));
     }
 }
