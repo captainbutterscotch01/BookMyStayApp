@@ -1,63 +1,79 @@
 import java.util.*;
 
-abstract class Room {
-    String type;
-    int beds;
-    double price;
-
-    Room(String type, int beds, double price) {
-        this.type = type;
-        this.beds = beds;
-        this.price = price;
-    }
-
-    void display() {
-        System.out.println("Room Type: " + type);
-        System.out.println("Beds: " + beds);
-        System.out.println("Price: " + price);
+class InvalidBookingException extends Exception {
+    InvalidBookingException(String message) {
+        super(message);
     }
 }
 
-class SingleRoom extends Room {
-    SingleRoom() {
-        super("Single Room", 1, 1000);
-    }
-}
+class Reservation {
+    String guestName;
+    String roomType;
 
-class DoubleRoom extends Room {
-    DoubleRoom() {
-        super("Double Room", 2, 2000);
-    }
-}
-
-class SuiteRoom extends Room {
-    SuiteRoom() {
-        super("Suite Room", 3, 5000);
+    Reservation(String guestName, String roomType) {
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 }
 
 class RoomInventory {
 
-    private HashMap<String, Integer> inventory;
+    private Map<String, Integer> inventory = new HashMap<>();
 
     RoomInventory() {
-        inventory = new HashMap<>();
-        inventory.put("Single Room", 5);
-        inventory.put("Double Room", 3);
-        inventory.put("Suite Room", 2);
+        inventory.put("Single Room", 2);
+        inventory.put("Double Room", 1);
     }
 
-    int getAvailability(String roomType) {
-        return inventory.getOrDefault(roomType, 0);
+    boolean isValidRoom(String type) {
+        return inventory.containsKey(type);
     }
 
-    void updateAvailability(String roomType, int count) {
-        inventory.put(roomType, count);
+    int getAvailability(String type) {
+        return inventory.getOrDefault(type, 0);
     }
 
-    void displayInventory() {
-        for (String key : inventory.keySet()) {
-            System.out.println(key + " Available: " + inventory.get(key));
+    void decrement(String type) {
+        inventory.put(type, getAvailability(type) - 1);
+    }
+}
+
+class BookingValidator {
+
+    static void validate(Reservation r, RoomInventory inventory) throws InvalidBookingException {
+
+        if (r.guestName == null || r.guestName.isEmpty()) {
+            throw new InvalidBookingException("Guest name cannot be empty");
+        }
+
+        if (!inventory.isValidRoom(r.roomType)) {
+            throw new InvalidBookingException("Invalid room type: " + r.roomType);
+        }
+
+        if (inventory.getAvailability(r.roomType) <= 0) {
+            throw new InvalidBookingException("No availability for " + r.roomType);
+        }
+    }
+}
+
+class BookingService {
+
+    private RoomInventory inventory;
+
+    BookingService(RoomInventory inventory) {
+        this.inventory = inventory;
+    }
+
+    void book(Reservation r) {
+        try {
+            BookingValidator.validate(r, inventory);
+
+            inventory.decrement(r.roomType);
+
+            System.out.println("Booking Successful: " + r.guestName + " -> " + r.roomType);
+
+        } catch (InvalidBookingException e) {
+            System.out.println("Booking Failed: " + e.getMessage());
         }
     }
 }
@@ -66,25 +82,13 @@ public class Main {
 
     public static void main(String[] args) {
 
-        Room r1 = new SingleRoom();
-        Room r2 = new DoubleRoom();
-        Room r3 = new SuiteRoom();
-
         RoomInventory inventory = new RoomInventory();
+        BookingService service = new BookingService(inventory);
 
-        r1.display();
-        System.out.println("Available: " + inventory.getAvailability(r1.type));
-        System.out.println();
-
-        r2.display();
-        System.out.println("Available: " + inventory.getAvailability(r2.type));
-        System.out.println();
-
-        r3.display();
-        System.out.println("Available: " + inventory.getAvailability(r3.type));
-        System.out.println();
-
-        System.out.println("Full Inventory:");
-        inventory.displayInventory();
+        service.book(new Reservation("Lakshmi", "Single Room"));
+        service.book(new Reservation("", "Single Room"));
+        service.book(new Reservation("Rahul", "Suite Room"));
+        service.book(new Reservation("Anita", "Double Room"));
+        service.book(new Reservation("Kiran", "Double Room"));
     }
 }
