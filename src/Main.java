@@ -1,63 +1,56 @@
 import java.util.*;
 
-abstract class Room {
-    String type;
-    int beds;
-    double price;
+class Reservation {
+    String guestName;
+    String roomType;
+    String roomId;
 
-    Room(String type, int beds, double price) {
-        this.type = type;
-        this.beds = beds;
-        this.price = price;
+    Reservation(String guestName, String roomType, String roomId) {
+        this.guestName = guestName;
+        this.roomType = roomType;
+        this.roomId = roomId;
     }
 
     void display() {
-        System.out.println("Room Type: " + type);
-        System.out.println("Beds: " + beds);
-        System.out.println("Price: " + price);
+        System.out.println("Guest: " + guestName +
+                ", Room Type: " + roomType +
+                ", Room ID: " + roomId);
     }
 }
 
-class SingleRoom extends Room {
-    SingleRoom() {
-        super("Single Room", 1, 1000);
+class BookingHistory {
+
+    private List<Reservation> history = new ArrayList<>();
+
+    void addReservation(Reservation r) {
+        history.add(r);
+    }
+
+    List<Reservation> getAllReservations() {
+        return history;
     }
 }
 
-class DoubleRoom extends Room {
-    DoubleRoom() {
-        super("Double Room", 2, 2000);
-    }
-}
+class BookingReportService {
 
-class SuiteRoom extends Room {
-    SuiteRoom() {
-        super("Suite Room", 3, 5000);
-    }
-}
-
-class RoomInventory {
-
-    private HashMap<String, Integer> inventory;
-
-    RoomInventory() {
-        inventory = new HashMap<>();
-        inventory.put("Single Room", 5);
-        inventory.put("Double Room", 3);
-        inventory.put("Suite Room", 2);
+    void displayAll(List<Reservation> reservations) {
+        System.out.println("Booking History:");
+        for (Reservation r : reservations) {
+            r.display();
+        }
     }
 
-    int getAvailability(String roomType) {
-        return inventory.getOrDefault(roomType, 0);
-    }
+    void summary(List<Reservation> reservations) {
+        Map<String, Integer> countMap = new HashMap<>();
 
-    void updateAvailability(String roomType, int count) {
-        inventory.put(roomType, count);
-    }
+        for (Reservation r : reservations) {
+            countMap.put(r.roomType,
+                    countMap.getOrDefault(r.roomType, 0) + 1);
+        }
 
-    void displayInventory() {
-        for (String key : inventory.keySet()) {
-            System.out.println(key + " Available: " + inventory.get(key));
+        System.out.println("\nSummary Report:");
+        for (String type : countMap.keySet()) {
+            System.out.println(type + " Bookings: " + countMap.get(type));
         }
     }
 }
@@ -66,25 +59,17 @@ public class Main {
 
     public static void main(String[] args) {
 
-        Room r1 = new SingleRoom();
-        Room r2 = new DoubleRoom();
-        Room r3 = new SuiteRoom();
+        BookingHistory history = new BookingHistory();
 
-        RoomInventory inventory = new RoomInventory();
+        history.addReservation(new Reservation("Lakshmi", "Single Room", "Single-1"));
+        history.addReservation(new Reservation("Rahul", "Double Room", "Double-1"));
+        history.addReservation(new Reservation("Anita", "Single Room", "Single-2"));
 
-        r1.display();
-        System.out.println("Available: " + inventory.getAvailability(r1.type));
-        System.out.println();
+        BookingReportService reportService = new BookingReportService();
 
-        r2.display();
-        System.out.println("Available: " + inventory.getAvailability(r2.type));
-        System.out.println();
+        List<Reservation> reservations = history.getAllReservations();
 
-        r3.display();
-        System.out.println("Available: " + inventory.getAvailability(r3.type));
-        System.out.println();
-
-        System.out.println("Full Inventory:");
-        inventory.displayInventory();
+        reportService.displayAll(reservations);
+        reportService.summary(reservations);
     }
 }
