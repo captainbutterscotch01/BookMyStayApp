@@ -1,63 +1,71 @@
 import java.util.*;
 
-abstract class Room {
-    String type;
-    int beds;
-    double price;
+class Reservation {
+    String guestName;
+    String roomType;
 
-    Room(String type, int beds, double price) {
-        this.type = type;
-        this.beds = beds;
-        this.price = price;
-    }
-
-    void display() {
-        System.out.println("Room Type: " + type);
-        System.out.println("Beds: " + beds);
-        System.out.println("Price: " + price);
+    Reservation(String guestName, String roomType) {
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 }
 
-class SingleRoom extends Room {
-    SingleRoom() {
-        super("Single Room", 1, 1000);
-    }
-}
+class BookingQueue {
+    private Queue<Reservation> queue = new LinkedList<>();
 
-class DoubleRoom extends Room {
-    DoubleRoom() {
-        super("Double Room", 2, 2000);
+    synchronized void addRequest(Reservation r) {
+        queue.add(r);
     }
-}
 
-class SuiteRoom extends Room {
-    SuiteRoom() {
-        super("Suite Room", 3, 5000);
+    synchronized Reservation getRequest() {
+        return queue.poll();
     }
 }
 
 class RoomInventory {
-
-    private HashMap<String, Integer> inventory;
+    private Map<String, Integer> inventory = new HashMap<>();
 
     RoomInventory() {
-        inventory = new HashMap<>();
-        inventory.put("Single Room", 5);
-        inventory.put("Double Room", 3);
-        inventory.put("Suite Room", 2);
+        inventory.put("Single Room", 1);
     }
 
-    int getAvailability(String roomType) {
-        return inventory.getOrDefault(roomType, 0);
+    synchronized boolean allocate(String type) {
+        int available = inventory.getOrDefault(type, 0);
+
+        if (available > 0) {
+            inventory.put(type, available - 1);
+            return true;
+        }
+        return false;
     }
 
-    void updateAvailability(String roomType, int count) {
-        inventory.put(roomType, count);
+    synchronized int getAvailability(String type) {
+        return inventory.getOrDefault(type, 0);
+    }
+}
+
+class BookingProcessor extends Thread {
+
+    private BookingQueue queue;
+    private RoomInventory inventory;
+
+    BookingProcessor(BookingQueue queue, RoomInventory inventory) {
+        this.queue = queue;
+        this.inventory = inventory;
     }
 
-    void displayInventory() {
-        for (String key : inventory.keySet()) {
-            System.out.println(key + " Available: " + inventory.get(key));
+    public void run() {
+        while (true) {
+            Reservation r = queue.getRequest();
+            if (r == null) break;
+
+            boolean success = inventory.allocate(r.roomType);
+
+            if (success) {
+                System.out.println("Booked: " + r.guestName);
+            } else {
+                System.out.println("Failed (No Room): " + r.guestName);
+            }
         }
     }
 }
@@ -66,25 +74,17 @@ public class Main {
 
     public static void main(String[] args) {
 
-        Room r1 = new SingleRoom();
-        Room r2 = new DoubleRoom();
-        Room r3 = new SuiteRoom();
-
+        BookingQueue queue = new BookingQueue();
         RoomInventory inventory = new RoomInventory();
 
-        r1.display();
-        System.out.println("Available: " + inventory.getAvailability(r1.type));
-        System.out.println();
+        queue.addRequest(new Reservation("Lakshmi", "Single Room"));
+        queue.addRequest(new Reservation("Rahul", "Single Room"));
+        queue.addRequest(new Reservation("Anita", "Single Room"));
 
-        r2.display();
-        System.out.println("Available: " + inventory.getAvailability(r2.type));
-        System.out.println();
+        BookingProcessor t1 = new BookingProcessor(queue, inventory);
+        BookingProcessor t2 = new BookingProcessor(queue, inventory);
 
-        r3.display();
-        System.out.println("Available: " + inventory.getAvailability(r3.type));
-        System.out.println();
-
-        System.out.println("Full Inventory:");
-        inventory.displayInventory();
+        t1.start();
+        t2.start();
     }
 }
